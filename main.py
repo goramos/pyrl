@@ -54,7 +54,7 @@ def test_SUMO():
     
     #a SUMO environment
     #env = SUMO('nets/simple/simple-traci.sumocfg', 8813, False)
-    env = SUMO('nets/ortuzar/ortuzar-traci.sumocfg', 8813, False)
+    env = SUMO('nets/OW/OW-traci.sumocfg', 8813, False)
     
     #an exploration strategy
     exp = EpsilonGreedy(1, 0.925)
@@ -83,17 +83,17 @@ def test_SUMO():
 def test_SUMORouteChoice():
     
     # a SUMO environment
-    env = SUMORouteChoice('nets/ortuzar/ortuzar-traci.sumocfg', 8813, False)
+    env = SUMORouteChoice('nets/OW/OW-traci.sumocfg', 8813, False)
     
     # convert the SUMO net file to the one accepted by KSP 
-    #misc.convert_SUMO_to_KSP('nets/ortuzar/ortuzar-traci.sumocfg')
+    #misc.convert_SUMO_to_KSP('nets/OW/OW-traci.sumocfg')
     
     # create a set of routes for each OD-pair (through KSP algorithm),
     # and define one such set for each OD-pair (these sets will correspond 
     # to the actions available on each state)
     pairs = env.get_OD_pairs()
     for origin, destination in pairs:
-        RKSP = KSP.getKRoutes('nets/ortuzar/ortuzar.txt', origin, destination, 4)
+        RKSP = KSP.getKRoutes('nets/OW/OW.txt', origin, destination, 4)
         routes = [" ".join(r[0]) for r in RKSP]
         env.set_routes_OD_pair(origin, destination, routes)
     
@@ -135,7 +135,7 @@ def test_NFG():
 def test_OPPORTUNE():
     
     # a SUMO environment
-    env = SUMO('nets/ortuzar/ortuzar-traci.sumocfg', 8813, False)
+    env = SUMO('nets/OW/OW-traci.sumocfg', 8813, False)
     
     # an exploration strategy
     exp = EpsilonGreedy(1, 0.925)
@@ -191,17 +191,17 @@ def test_OPPORTUNE():
 def test_OPPORTUNE_route_choice():
     
     # a SUMO environment
-    env = SUMORouteChoice('nets/ortuzar/ortuzar-traci.sumocfg', 8813, False)
+    env = SUMORouteChoice('nets/OW/OW-traci.sumocfg', 8813, False)
     
     # convert the SUMO net file to the one accepted by KSP 
-    #misc.convert_SUMO_to_KSP('nets/ortuzar/ortuzar-traci.sumocfg')
+    #misc.convert_SUMO_to_KSP('nets/OW/OW-traci.sumocfg')
     
     # create a set of routes for each OD-pair (through KSP algorithm),
     # and define one such set for each OD-pair (these sets will correspond 
     # to the actions available on each state)
     pairs = env.get_OD_pairs()
     for origin, destination in pairs:
-        RKSP = KSP.getKRoutes('nets/ortuzar/ortuzar.txt', origin, destination, 4)
+        RKSP = KSP.getKRoutes('nets/OW/OW.txt', origin, destination, 4)
         routes = [" ".join(r[0]) for r in RKSP]
         env.set_routes_OD_pair(origin, destination, routes)
     

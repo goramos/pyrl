@@ -1,7 +1,7 @@
 <configuration>
     <input>
-        <net-file value="ortuzar.net.xml"/>
-		<route-files value="ortuzar-nowait.rou.xml"/>
+        <net-file value="OW.net.xml"/>
+		<route-files value="OW-nowait.rou.xml"/>
     </input>
 	<time>
         <begin value="0"/>
