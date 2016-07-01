@@ -22,7 +22,7 @@ from exploration.boltzmann import Boltzmann
 import tools.misc as misc#@UnusedImport
 import external.KSP as KSP
 
-from itertools import chain, combinations
+from itertools import *#@UnusedWildImport #chain, combinations
 
 
 
