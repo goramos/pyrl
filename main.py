@@ -201,7 +201,7 @@ def test_OPPORTUNE_route_choice():
     # to the actions available on each state)
     pairs = env.get_OD_pairs()
     for origin, destination in pairs:
-        RKSP = KSP.getKRoutes('nets/OW/OW.txt', origin, destination, 4)
+        RKSP = KSP.getKRoutesNetFile('nets/OW/OW_for_KSP.net', origin, destination, 4)
         routes = [" ".join(r[0]) for r in RKSP]
         env.set_routes_OD_pair(origin, destination, routes)
     
