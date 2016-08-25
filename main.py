@@ -93,7 +93,7 @@ def test_SUMORouteChoice():
     # to the actions available on each state)
     pairs = env.get_OD_pairs()
     for origin, destination in pairs:
-        RKSP = KSP.getKRoutes('nets/OW/OW.txt', origin, destination, 4)
+        RKSP = KSP.getKRoutesNetFile('nets/OW/OW_for_KSP.net', origin, destination, 4)
         routes = [" ".join(r[0]) for r in RKSP]
         env.set_routes_OD_pair(origin, destination, routes)
     
@@ -346,6 +346,8 @@ def test_old():
     print sum([1 for a in _A.keys() if a not in _replies or (a in _replies and _replies[a] == 'NOT')])
     
 if __name__ == '__main__':
+    
+    #misc.convert_SUMO_to_KSP('nets/OW/OW-traci.sumocfg')
     
     #test_cliff()
     #test_SUMO()
