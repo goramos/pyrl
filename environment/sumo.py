@@ -171,7 +171,6 @@ class SUMO(Environment):
     def __close_connection(self):
         traci.close()               #stop TraCI
         sys.stdout.flush()          #clear standard output
-        self._sumo_process.wait()   #wait for SUMO's subprocess termination
     
     def get_state_actions(self, state):
         return self.__env[state].keys()
@@ -180,14 +179,9 @@ class SUMO(Environment):
         
         super(SUMO, self).reset_episode()
         
-        #open a SUMO subprocess
-        self._sumo_process = subprocess.Popen([self._sumo_binary, "-c", self.__cfg_file, "--remote-port", "%i"%(self.__port)], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
-        
         #initialise TraCI
-        traci.init(self.__port)
+        traci.start([self._sumo_binary , "-c", self.__cfg_file]) # SUMO 0.28
         
-        #register commands to be performed upon normal termination
-        atexit.register(self.__close_connection)
         
         #------------------------------------
         for vehID in self.get_vehicles_ID_list():
@@ -198,6 +192,8 @@ class SUMO(Environment):
             self.__vehicles[vehID]['travel_time'] = -1.0
             self.__vehicles[vehID]['time_last_link'] = -1.0
             self.__vehicles[vehID]['route'] = [self.__vehicles[vehID]['origin']]
+            self.__vehicles[vehID]['initialized'] = False
+            self.__vehicles[vehID]['n_of_traversed_links'] = 0
     
     @contextmanager
     def redirected(self):
@@ -246,9 +242,12 @@ class SUMO(Environment):
             
             # create an initial route for vehicle vehID, consisting of the first action, only
             traci.route.add('R-%s'%vehID, [learner_state_action[vehID][1]])
+            #print vehID, [learner_state_action[vehID][1]]
             with (self.redirected()):
                 try:
+                    #print '***  **',vehID, 'R-%s'%vehID, traci.vehicle.getRoute(vehID),'\n'
                     traci.vehicle.setRouteID(vehID, 'R-%s'%vehID)
+                    self.__vehicles[vehID]['initialized'] = True
                     #print vehID , ': ' , 'R-%s'%vehID , ' = ' , traci.route.getEdges('R-%s'%vehID )
                 except:
                     pass
@@ -259,6 +258,7 @@ class SUMO(Environment):
         #main loop
         arrived=0
         departed=0
+        
         while ((max_steps > -1 and traci.simulation.getCurrentTime() < max_steps) or max_steps <= -1) and (traci.simulation.getMinExpectedNumber() > 0 or traci.simulation.getArrivedNumber() > 0):
             
             #if (traci.simulation.getCurrentTime()/1000) % 100 == 0:
@@ -267,14 +267,15 @@ class SUMO(Environment):
             # loaded vehicles
             # the initial route must be set as soon as the vehicle is loaded, and BEFORE it enters the network
             for vehID in traci.simulation.getLoadedIDList():
-                #rrraaab = traci.vehicle.getRoute(vehID)
                 traci.vehicle.setRouteID(vehID, 'R-%s'%vehID)
+                self.__vehicles[vehID]['initialized'] = True
                 #if vehID == vtest:
                 #    print "Route of %s was %s now is %s" % (vehID, rrraaab, traci.vehicle.getRoute(vehID))
             
             # run a single simulation step 
             traci.simulationStep()
             current_time = traci.simulation.getCurrentTime()/1000
+
             #if current_time % 500 == 0:
             #    print '> %i, %i (%i departed, %i arrived) ' % (self._episodes, current_time, departed, arrived)
             
@@ -282,6 +283,10 @@ class SUMO(Environment):
             for vehID in traci.simulation.getDepartedIDList():
                 self.__vehicles[vehID]["departure_time"] = current_time
                 departed += 1
+                
+                if not self.__vehicles[vehID]['initialized']:
+					traci.vehicle.setRouteID(vehID, 'R-%s'%vehID)
+					self.__vehicles[vehID]['initialized'] = True
             
             # arrived vehicles (those that have reached their destinations)
             vehicles_to_process_feedback = {}
@@ -329,13 +334,13 @@ class SUMO(Environment):
                         
                         #update current_link
                         self.__vehicles[vehID]['current_link'] = road
+                        self.__vehicles[vehID]['n_of_traversed_links'] += 1
                         
                         #get the next node, and add it to the route
                         node = self.__get_edge_destination(self.__vehicles[vehID]["current_link"])
                         self.__vehicles[vehID]['route'].append(self.__get_edge_destination(self.__vehicles[vehID]['current_link']))
                         
                         if node != self.__vehicles[vehID]['destination']:
-                            
                             vehicles_to_process_act[vehID] = [
                                 node, #next state
                                 [x.getID().encode('utf-8') for x in self.__net.getEdge(self.__vehicles[vehID]['current_link']).getOutgoing()] #available actions
@@ -354,8 +359,7 @@ class SUMO(Environment):
                 sum_tt += self.__vehicles[vehID]['travel_time']
             else: # for those vehicles that have not reached their destination
                 sum_tt += current_time - self.__vehicles[vehID]["departure_time"]
-            #print '%i\t%s\t%s\t%s' % (self._episodes, vehID, self.__vehicles[vehID]['travel_time'], self.__vehicles[vehID]['route'])
-        print '%i\t%s\t%s' % (self._episodes, (sum_tt/len(self.get_vehicles_ID_list()))/60, time.time() - start)
+            print '%i\t%s\t%s\t%s' % (self._episodes, vehID, self.__vehicles[vehID]['travel_time'], self.__vehicles[vehID]['route'])
         
         self.__close_connection()
         
@@ -399,7 +403,9 @@ class SUMO(Environment):
             
         # act_last
         for vehID in vehicles.keys():
+            #~ print vehID,  vehicles[vehID][1]
             _, action = self._learners[vehID].act_last(vehicles[vehID][0], vehicles[vehID][1])
+            #~ print vehID, action
             #print "%s is in state %s and chosen action %s among %s" % (vehID, vehicles[vehID][0], action, vehicles[vehID][1])
             
             if not vehicles[vehID][1]:
@@ -410,11 +416,17 @@ class SUMO(Environment):
             
             #update route
             cur_route = traci.vehicle.getRoute(vehID)
+            #~ print 'route', traci.route.getEdges('R-%s'%vehID)
+            #~ print vehID, traci.vehicle.getRoute(vehID)
             cur_route.append(action)
-            #print 'route+ = %s'%cur_route
-            if cur_route[0] != self.__vehicles[vehID]['current_link']:
-                del cur_route[0]
-            #print 'route- = %s'%cur_route
+            #~ print 'current ', vehID, self.__vehicles[vehID]['current_link']
+            
+            # remove traversed links from the route
+            # (this is necessary because otherwise the driver will try 
+            # to reach the first link of such route from its current link)
+            cur_route = cur_route[self.__vehicles[vehID]['n_of_traversed_links']-1:]
+            
+            #~ print vehID, cur_route
             traci.vehicle.setRoute(vehID, cur_route)
     
     def __is_link(self, edge_id):
@@ -601,8 +613,7 @@ class SUMORouteChoice(Environment):
     def __close_connection(self):
         traci.close()               # stop TraCI
         sys.stdout.flush()          # clear standard output
-        self._sumo_process.wait()   # wait for SUMO's subprocess termination
-    
+        
     def get_state_actions(self, state):
         self.__check_env()
         return self.__env[state][2]
@@ -611,14 +622,8 @@ class SUMORouteChoice(Environment):
         
         super(SUMORouteChoice, self).reset_episode()
         
-        # open a SUMO subprocess
-        self._sumo_process = subprocess.Popen([self._sumo_binary, "-c", self.__cfg_file, "--remote-port", "%i"%(self.__port)], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
-        
         # initialise TraCI
-        traci.init(self.__port)
-        
-        # register commands to be performed upon normal termination
-        atexit.register(self.__close_connection)
+        traci.start([self._sumo_binary , "-c", self.__cfg_file]) # SUMO 0.28
         
         # reset vehicles attributes
         for vehID in self.get_vehicles_ID_list():
@@ -720,7 +725,7 @@ class SUMORouteChoice(Environment):
         sum_tt = 0
         for vehID in self.get_vehicles_ID_list():
             sum_tt += self.__vehicles[vehID]['travel_time']
-        print '%i\t%s\t%s' % (self._episodes, (sum_tt/len(self.get_vehicles_ID_list()))/60, time.time() - start)
+        print '\n***%i\t%s\t%s***' % (self._episodes, (sum_tt/len(self.get_vehicles_ID_list()))/60, time.time() - start)
         
         self.__close_connection()
         

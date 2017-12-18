@@ -10,6 +10,8 @@ import environment.NFG as NFG
 from environment.cliffwalking import CliffWalking
 from environment.sumo import SUMO
 from environment.sumo import SUMORouteChoice
+from environment.sumotl import SUMOTrafficLights
+
 from environment.NFG.twoplayer_twoaction import TwoPlayerTwoAction
 
 from learner.q_learning import QLearner
@@ -23,6 +25,9 @@ import tools.misc as misc#@UnusedImport
 import external.KSP as KSP
 
 from itertools import *#@UnusedWildImport #chain, combinations
+
+import datetime
+
 
 
 
@@ -57,7 +62,7 @@ def test_SUMO():
     env = SUMO('nets/OW/OW-traci.sumocfg', 8813, False)
     
     #an exploration strategy
-    exp = EpsilonGreedy(1, 0.925)
+    exp = EpsilonGreedy(epsilon=1, min_epsilon=0.1, decay_rate=0.99)
     
     #for each vehicle in the route file
     for vehID in env.get_vehicles_ID_list():
@@ -98,7 +103,7 @@ def test_SUMORouteChoice():
         env.set_routes_OD_pair(origin, destination, routes)
     
     # an exploration strategy
-    exp = EpsilonGreedy(1, 0.925)
+    exp = EpsilonGreedy(epsilon=1, min_epsilon=0.1, decay_rate=0.99)
     
     # for each vehicle in the route file
     for vehID in env.get_vehicles_ID_list():
@@ -121,6 +126,43 @@ def test_SUMORouteChoice():
     for _ in xrange(n_episodes):
         env.run_episode(50000)
         #print env._learners['1.0']._QTable
+        
+def test_SUMOTrafficLights():
+
+
+	print datetime.datetime.now().time()
+	print 'SUMO traffic lights'
+		
+	# a SUMO environment
+	env = SUMOTrafficLights('nets/3x3grid/3x3grid.sumocfg', 8813, False)
+   
+	# an exploration strategy
+	exp = EpsilonGreedy(epsilon=1, min_epsilon=0.0, decay_rate=0.95, manual_decay=True)
+	   
+	# for each traffic light in the net file
+	for tlID in env.get_trafficlights_ID_list():
+		# create a learner
+		_ = QLearner(tlID, env, 0, 0 , 0.1, 0.8, exp)
+	
+	# number of episodes
+	n_episodes = 100
+
+
+	# for each episode
+	for i in xrange(n_episodes):
+		# print queue length
+		arq_avg_nome = 'tl_%d.txt' % (i)
+		arq_tl = open(arq_avg_nome, 'w') #para salvar saida em um arquivo 
+		arq_tl.writelines('##%s## \n' % (datetime.datetime.now().time()))
+		arq_tl.write('step,tl0,tl1,tl2,tl3,tl4,tl5,tl6,tl7,tl8,average,all\n')
+		
+		env.run_episode(28800, arq_tl, exp) 
+
+		
+	arq_tl.close()
+	print datetime.datetime.now().time()
+    
+	                
 
 def test_NFG():
     
@@ -351,7 +393,8 @@ if __name__ == '__main__':
     
     #test_cliff()
     #test_SUMO()
-    test_SUMORouteChoice()
+    #test_SUMORouteChoice()
+    test_SUMOTrafficLights()
     #test_NFG()
     #test_OPPORTUNE()
     #test_OPPORTUNE_route_choice()

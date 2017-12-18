@@ -11,7 +11,7 @@ class ExplorationStrategy:
     
     #Return an action, given an actions dictionary in the form action:Q-value
     @abc.abstractmethod
-    def choose(self, action_dict):
+    def choose(self, action_dict, episode):
         return
     
     #Called only in the beginning of each episode

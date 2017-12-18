@@ -21,7 +21,7 @@ class QLearner(Learner):
         
         self._initialise_Q_table()
         
-        self.reset_episodic()
+        self.reset_episodic(0)
     
     #initialize the Q-table.
     #in the beginning, only the entries corresponding to initial state
@@ -35,7 +35,9 @@ class QLearner(Learner):
         #nothing to do here (instead of reset_all, the learner could be recreated)
         pass
     
-    def reset_episodic(self):
+    def reset_episodic(self, episode):
+        super(QLearner, self).reset_episodic(episode)
+		
         self._state = self._starting_state
         self._action = None
         self._accumulated_reward = 0.0
@@ -83,7 +85,7 @@ class QLearner(Learner):
             self._has_arrived = True
         else:
             #choose action according to the the exploration strategy
-            self._action = self._exp_strategy.choose(available)
+            self._action = self._exp_strategy.choose(available, self._episode)
         
         #print "Action %s taken in state %s" % (self._action, self._state)
         
@@ -192,7 +194,8 @@ class QLearner2(Learner):
         
         self._QTable[self._starting_state] = dict({a:0 for a in self._get_actions_f(self._starting_state)})
         
-    def reset_episodic(self):
+    def reset_episodic(self, episode):
+        super(QLearner, self).reset_episodic(episode)
         self._state = self._starting_state
         self._action = None
         self._accumulated_reward = 0.0

@@ -19,6 +19,8 @@ class Learner(object):
         self._state = None
         self._action = None
         
+        self._episode = None
+        
         # subset of available actions in the current state
         # (used only when NOT ALL actions of the current state are available)
         # PS: when all actions are available, the value must be set to None 
@@ -30,9 +32,8 @@ class Learner(object):
         pass
         
     # reset all episode-related attributes
-    @abc.abstractmethod
-    def reset_episodic(self):
-        pass
+    def reset_episodic(self, episode):
+		self._episode = episode
     
     # return the agent's current state and the action to be performed by him. 
     # the state may be passed as parameter if the reasoning is being made in advance (SUMO env, eg).

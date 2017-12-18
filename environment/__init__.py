@@ -52,7 +52,7 @@ class Environment(object):
         self._has_episode_ended = False
         
         for l in self._learners.values():
-            l.reset_episodic()
+            l.reset_episodic(self._episodes)
     
     #register a learner within the environment
     def register_learner(self, learner):
